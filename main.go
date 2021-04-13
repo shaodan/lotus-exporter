@@ -12,14 +12,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -151,6 +149,8 @@ func main() {
 		log.Fatalf("wrong actor address: %s", minerAddr)
 	}
 
+	log.Println("get miner info")
+
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -188,7 +188,7 @@ func GetMinerInfo() (info MinerInfo, err error) {
 		return
 	}
 
-	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(&daemonAPI), blockstore.NewTemporary())
+	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(&daemonAPI), blockstore.NewMemory())
 	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 	if err != nil {
 		return
