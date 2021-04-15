@@ -1,6 +1,6 @@
 # lotus-exporter
 
-Prometheus Exporter for lotus 
+Prometheus Exporter for lotus
 https://prometheus.io/docs/instrumenting/writing_exporters/
 
 # How to Run
@@ -9,7 +9,7 @@ https://prometheus.io/docs/instrumenting/writing_exporters/
 
 wget https://dl.google.com/go/go1.15.2.linux-amd64.tar.gz
 sudo tar -xvf go1.15.3.linux-amd64.tar.gz
-sudo mv go /usr/local  
+sudo mv go /usr/local
 
 ## Complier
 
@@ -20,7 +20,7 @@ go build .
 
 ## Run
 
-./lotus-exporter
+./lotus-exporter -m f0xxxx
 
 ## Use
 
