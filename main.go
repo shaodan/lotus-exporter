@@ -24,8 +24,10 @@ import (
 )
 
 var (
-	interval  time.Duration
-	minerID   string
+	interval time.Duration
+	minerID  string
+	height   int64
+
 	daemonAPI apistruct.FullNodeStruct
 	minerAddr address.Address
 
@@ -115,7 +117,8 @@ type MinerInfo struct {
 
 func init() {
 	flag.DurationVar(&interval, "i", 1*time.Minute, "Interval of refreshing miner info")
-	flag.StringVar(&minerID, "m", "", "Miner ID")
+	flag.StringVar(&minerID, "m", "", "Miner ID, required!")
+	flag.Int64Var(&height, "t", 0, "Target height, default latest")
 
 	// disable go collector
 	prometheus.Unregister(prometheus.NewGoCollector())
@@ -156,11 +159,25 @@ func main() {
 
 	log.Printf("get miner %s's info", minerID)
 
+	var tpKey types.TipSetKey
+	if height == 0 {
+		tpKey = types.EmptyTSK
+		log.Println("Target height: Head")
+	} else {
+		ts, err := daemonAPI.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(height), types.EmptyTSK)
+		if err != nil {
+			log.Fatalf("wrong height: %s", err)
+		}
+		tpKey = ts.Key()
+		log.Printf("Target height: %d, tsKey: %s\n", height, tpKey)
+		// tpKey = types.NewTipSetKey(c)
+	}
+
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for ; true; <-ticker.C {
-			info, _ := GetMinerInfo()
+			info, _ := GetMinerInfo(tpKey)
 			totalRawBytePower.Set(info.TotalRawBytePower)
 			totalQualityPower.Set(info.TotalQualityPower)
 			minerRawBytePower.Set(info.MinerRawBytePower)
@@ -185,10 +202,10 @@ func main() {
 	}
 }
 
-func GetMinerInfo() (info MinerInfo, err error) {
+func GetMinerInfo(tpKey types.TipSetKey) (info MinerInfo, err error) {
 	ctx := context.Background()
 
-	mact, err := daemonAPI.StateGetActor(ctx, minerAddr, types.EmptyTSK)
+	mact, err := daemonAPI.StateGetActor(ctx, minerAddr, tpKey)
 	if err != nil {
 		return
 	}
@@ -199,13 +216,13 @@ func GetMinerInfo() (info MinerInfo, err error) {
 		return
 	}
 
-	mi, err := daemonAPI.StateMinerInfo(ctx, minerAddr, types.EmptyTSK)
+	mi, err := daemonAPI.StateMinerInfo(ctx, minerAddr, tpKey)
 	if err != nil {
 		return
 	}
 	fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))))
 
-	pow, err := daemonAPI.StateMinerPower(ctx, minerAddr, types.EmptyTSK)
+	pow, err := daemonAPI.StateMinerPower(ctx, minerAddr, tpKey)
 	if err != nil {
 		return
 	}
@@ -214,7 +231,7 @@ func GetMinerInfo() (info MinerInfo, err error) {
 	info.TotalRawBytePower = ConvertPower(pow.TotalPower.RawBytePower)
 	info.TotalQualityPower = ConvertPower(pow.TotalPower.QualityAdjPower)
 
-	secCounts, err := daemonAPI.StateMinerSectorCount(ctx, minerAddr, types.EmptyTSK)
+	secCounts, err := daemonAPI.StateMinerSectorCount(ctx, minerAddr, tpKey)
 	if err != nil {
 		return
 	}
@@ -274,12 +291,14 @@ func GetMinerInfo() (info MinerInfo, err error) {
 		info.ControlBalance = 0
 	}
 
-	mb, err := daemonAPI.StateMarketBalance(ctx, minerAddr, types.EmptyTSK)
-	if err != nil {
-		return
-	}
-	fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
-	fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
+	// mb, err := daemonAPI.StateMarketBalance(ctx, minerAddr, tpKey)
+	// if err != nil {
+	// 	return
+	// }
+	// fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
+	// fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
+
+	fmt.Printf("%+v\n", info)
 
 	return
 }

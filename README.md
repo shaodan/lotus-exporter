@@ -20,7 +20,7 @@ go build .
 
 ## Run
 
-./lotus-exporter -m f0xxxx
+./lotus-exporter -m f0xxxx [-t height, default latest]
 
 ## Use
 
