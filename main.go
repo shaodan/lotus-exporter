@@ -25,6 +25,7 @@ import (
 
 var (
 	interval  time.Duration
+	minerID   string
 	daemonAPI apistruct.FullNodeStruct
 	minerAddr address.Address
 
@@ -114,6 +115,7 @@ type MinerInfo struct {
 
 func init() {
 	flag.DurationVar(&interval, "i", 1*time.Minute, "Interval of refreshing miner info")
+	flag.StringVar(&minerID, "m", "", "Miner ID")
 
 	// disable go collector
 	prometheus.Unregister(prometheus.NewGoCollector())
@@ -128,16 +130,19 @@ func init() {
 func main() {
 	flag.Parse()
 
-	minerID := ""
-	daemonAddr := ""
-	daemonToken := ""
+	if len(minerID) == 0 {
+		log.Fatalln("Please input miner ID")
+	}
+
+	header := http.Header{}
+	addr := "https://api.node.glif.io/rpc/v0"
 
 	ctx := context.Background()
 	closer, err := jsonrpc.NewMergeClient(ctx,
-		"ws://"+daemonAddr+"/rpc/v0",
+		addr,
 		"Filecoin",
 		[]interface{}{&daemonAPI.Internal, &daemonAPI.CommonStruct.Internal},
-		http.Header{"Authorization": []string{"Bearer " + daemonToken}},
+		header,
 	)
 	if err != nil {
 		log.Fatalf("connecting with lotus failed: %s", err)
@@ -149,7 +154,7 @@ func main() {
 		log.Fatalf("wrong actor address: %s", minerAddr)
 	}
 
-	log.Println("get miner info")
+	log.Printf("get miner %s's info", minerID)
 
 	go func() {
 		ticker := time.NewTicker(interval)
