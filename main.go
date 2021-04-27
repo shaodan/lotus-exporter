@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ var (
 	interval time.Duration
 	minerID  string
 	height   int64
+	infoJson []byte
 
 	daemonAPI apistruct.FullNodeStruct
 	minerAddr address.Address
@@ -94,6 +96,7 @@ var (
 )
 
 type MinerInfo struct {
+	MinerID string
 	// Power
 	TotalRawBytePower float64
 	TotalQualityPower float64
@@ -128,6 +131,12 @@ func init() {
 	prometheus.MustRegister(sectorsCommitted, sectorsFaulty, sectorsActive)
 	prometheus.MustRegister(workerBalance, minerBalance, controlBalance)
 	prometheus.MustRegister(availableBalance, pledgedBalance, vestingBalance, preCommitBalance)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(infoJson)
 }
 
 func main() {
@@ -177,7 +186,11 @@ func main() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for ; true; <-ticker.C {
-			info, _ := GetMinerInfo(tpKey)
+			info, err := GetMinerInfo(tpKey)
+			if err != nil {
+				log.Printf("get info err %s\n", err)
+				continue
+			}
 			totalRawBytePower.Set(info.TotalRawBytePower)
 			totalQualityPower.Set(info.TotalQualityPower)
 			minerRawBytePower.Set(info.MinerRawBytePower)
@@ -193,11 +206,18 @@ func main() {
 			pledgedBalance.Set(info.PledgedBalance)
 			preCommitBalance.Set(info.PreCommitBalance)
 			vestingBalance.Set(info.VestingBalance)
+
+			infoJson, err = json.Marshal(info)
+			if err != nil {
+				log.Printf("get info err %s\n", err)
+				continue
+			}
 		}
 	}()
 
+	http.HandleFunc("/json", handler)
 	http.Handle("/metrics", promhttp.Handler())
-	if err := http.ListenAndServe(":9002", nil); err != nil {
+	if err := http.ListenAndServe(":9003", nil); err != nil {
 		log.Panicf("error starting HTTP server %s", err)
 	}
 }
@@ -220,12 +240,13 @@ func GetMinerInfo(tpKey types.TipSetKey) (info MinerInfo, err error) {
 	if err != nil {
 		return
 	}
-	fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))))
+	log.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))))
 
 	pow, err := daemonAPI.StateMinerPower(ctx, minerAddr, tpKey)
 	if err != nil {
 		return
 	}
+	info.MinerID = minerID
 	info.MinerRawBytePower = ConvertPower(pow.MinerPower.RawBytePower)
 	info.MinerQualityPower = ConvertPower(pow.MinerPower.QualityAdjPower)
 	info.TotalRawBytePower = ConvertPower(pow.TotalPower.RawBytePower)
