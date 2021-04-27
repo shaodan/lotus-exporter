@@ -214,6 +214,7 @@ func main() {
 				log.Printf("get info err %s\n", err)
 				continue
 			}
+			log.Println(string(infoJson))
 		}
 	}()
 
@@ -315,15 +316,6 @@ func GetMinerInfo(tpKey types.TipSetKey) (info MinerInfo, err error) {
 	} else {
 		info.ControlBalance = 0
 	}
-
-	// mb, err := daemonAPI.StateMarketBalance(ctx, minerAddr, tpKey)
-	// if err != nil {
-	// 	return
-	// }
-	// fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
-	// fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
-
-	fmt.Printf("%+v\n", info)
 
 	return
 }
