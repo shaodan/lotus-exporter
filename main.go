@@ -123,7 +123,7 @@ func init() {
 	flag.DurationVar(&interval, "i", 1*time.Minute, "Interval of refreshing miner info")
 	flag.StringVar(&minerID, "m", "", "Miner ID, required!")
 	flag.Int64Var(&height, "t", 0, "Target height, default latest")
-	flag.UintVar(&port, "p", 9003, "Port, default 9002")
+	flag.UintVar(&port, "p", 9002, "Port, default 9002")
 
 	// disable go collector
 	prometheus.Unregister(prometheus.NewGoCollector())
