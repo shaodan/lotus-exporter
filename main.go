@@ -25,6 +25,7 @@ import (
 )
 
 var (
+	port     uint
 	interval time.Duration
 	minerID  string
 	height   int64
@@ -122,6 +123,7 @@ func init() {
 	flag.DurationVar(&interval, "i", 1*time.Minute, "Interval of refreshing miner info")
 	flag.StringVar(&minerID, "m", "", "Miner ID, required!")
 	flag.Int64Var(&height, "t", 0, "Target height, default latest")
+	flag.UintVar(&port, "p", 9003, "Port, default 9002")
 
 	// disable go collector
 	prometheus.Unregister(prometheus.NewGoCollector())
@@ -217,7 +219,9 @@ func main() {
 
 	http.HandleFunc("/json", handler)
 	http.Handle("/metrics", promhttp.Handler())
-	if err := http.ListenAndServe(":9003", nil); err != nil {
+	listenAddr := fmt.Sprintf(":%d", port)
+	log.Printf("listen on %s\n", listenAddr)
+	if err := http.ListenAndServe(listenAddr, nil); err != nil {
 		log.Panicf("error starting HTTP server %s", err)
 	}
 }
