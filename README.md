@@ -24,4 +24,10 @@ go build .
 
 ## Use
 
+### Prometheus exporter
+
 curl http://localhost:9002/metrics
+
+### JSON
+
+curl http://localhost:9002/json
